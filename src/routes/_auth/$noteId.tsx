@@ -6,6 +6,7 @@ import { ArrowLeftIcon, FileQuestionIcon, Loader2Icon, Trash2Icon } from "lucide
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { Container } from "#/components/container";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,7 +63,16 @@ function NotePage() {
 function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
   const navigate = useNavigate({ from: "/$noteId" });
   const updateNote = useMutation(api.notes.update);
-  const removeNote = useMutation(api.notes.remove);
+  const removeNote = useMutation(api.notes.remove).withOptimisticUpdate((localStore, args) => {
+    const notes = localStore.getQuery(api.notes.list, {});
+    if (notes !== undefined) {
+      localStore.setQuery(
+        api.notes.list,
+        {},
+        notes.filter((listedNote) => listedNote._id !== args.noteId),
+      );
+    }
+  });
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [saveStatus, setSaveStatus] = useState("saved");
@@ -129,27 +139,31 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
 
   async function handleDelete() {
     setIsDeleting(true);
-
-    const didDelete = await removeNote({ noteId: note._id }).then(
-      () => true,
-      () => false,
-    );
-
-    if (!didDelete) {
-      toast.error("Could not delete this note. Please try again.");
-      setIsDeleting(false);
-      return;
-    }
+    const deletion = removeNote({ noteId: note._id });
 
     const didNavigate = await navigate({ to: "/" }).then(
       () => true,
       () => false,
     );
 
-    if (!didNavigate) {
-      toast.error("The note was deleted, but the notes list could not be opened.");
-      setIsDeleting(false);
+    if (didNavigate) {
+      void deletion.catch(() => {
+        toast.error("Could not delete this note. It has been restored.");
+      });
+      return;
     }
+
+    const didDelete = await deletion.then(
+      () => true,
+      () => false,
+    );
+
+    if (didDelete) {
+      toast.error("The note was deleted, but the notes list could not be opened.");
+    } else {
+      toast.error("Could not delete this note. Please try again.");
+    }
+    setIsDeleting(false);
   }
 
   function markDraftChanged() {
@@ -159,7 +173,7 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
   return (
     <div className="min-h-svh bg-background">
       <header className="border-b">
-        <div className="mx-auto grid w-full max-w-3xl grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2 px-4 py-3 sm:grid-cols-[6rem_minmax(0,1fr)_6rem] sm:px-6">
+        <Container className="grid h-16 grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2 sm:grid-cols-[6rem_minmax(0,1fr)_6rem]">
           <Button
             type="button"
             variant="ghost"
@@ -231,32 +245,34 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </div>
+        </Container>
       </header>
 
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
-        <Card size="sm">
-          <CardHeader>
-            <CardDescription>Total</CardDescription>
-            <CardTitle className="font-mono text-3xl font-semibold tracking-tight tabular-nums">
-              {totalFormatter.format(totalInCents / 100)}
-            </CardTitle>
-          </CardHeader>
-        </Card>
+      <main>
+        <Container className="flex flex-col gap-4 py-4">
+          <Card size="sm">
+            <CardHeader>
+              <CardDescription>Total</CardDescription>
+              <CardTitle className="font-mono text-3xl font-semibold tracking-tight tabular-nums">
+                {totalFormatter.format(totalInCents / 100)}
+              </CardTitle>
+            </CardHeader>
+          </Card>
 
-        <Textarea
-          aria-label="Note entries"
-          value={body}
-          placeholder={"1000 salary\n-500 dinner\n-250 coffee"}
-          spellCheck
-          className="min-h-[calc(100svh-15rem)] resize-none rounded-3xl bg-card p-5 font-mono text-base leading-8 md:text-base"
-          onChange={(event) => {
-            const nextBody = event.target.value;
-            currentDraft.current = { title, body: nextBody };
-            setBody(nextBody);
-            markDraftChanged();
-          }}
-        />
+          <Textarea
+            aria-label="Note entries"
+            value={body}
+            placeholder={"1000 salary\n-500 dinner\n-250 coffee"}
+            spellCheck
+            className="min-h-[calc(100svh-15rem)] resize-none rounded-none bg-card p-5 font-mono text-base leading-8 md:text-base"
+            onChange={(event) => {
+              const nextBody = event.target.value;
+              currentDraft.current = { title, body: nextBody };
+              setBody(nextBody);
+              markDraftChanged();
+            }}
+          />
+        </Container>
       </main>
     </div>
   );
@@ -266,23 +282,25 @@ function NoteLoading() {
   return (
     <div className="min-h-svh bg-background">
       <header className="border-b">
-        <div className="mx-auto grid w-full max-w-3xl grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2 px-4 py-3 sm:grid-cols-[6rem_minmax(0,1fr)_6rem] sm:px-6">
+        <Container className="grid h-16 grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2 sm:grid-cols-[6rem_minmax(0,1fr)_6rem]">
           <Skeleton className="size-8" />
           <div className="flex flex-col items-center gap-1">
             <Skeleton className="h-8 w-full max-w-56" />
             <Skeleton className="h-3 w-14" />
           </div>
           <Skeleton className="size-8 justify-self-end" />
-        </div>
+        </Container>
       </header>
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
-        <Card size="sm">
-          <CardHeader>
-            <Skeleton className="h-4 w-12" />
-            <Skeleton className="h-9 w-40" />
-          </CardHeader>
-        </Card>
-        <Skeleton className="min-h-[calc(100svh-15rem)] w-full rounded-3xl" />
+      <main>
+        <Container className="flex flex-col gap-4 py-6 sm:py-8">
+          <Card size="sm">
+            <CardHeader>
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-9 w-40" />
+            </CardHeader>
+          </Card>
+          <Skeleton className="min-h-[calc(100svh-15rem)] w-full rounded-3xl" />
+        </Container>
       </main>
     </div>
   );
@@ -290,24 +308,26 @@ function NoteLoading() {
 
 function NoteNotFound() {
   return (
-    <main className="flex min-h-svh items-center justify-center px-4">
-      <Empty className="max-w-lg border">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <FileQuestionIcon />
-          </EmptyMedia>
-          <EmptyTitle>Note not found</EmptyTitle>
-          <EmptyDescription>
-            This note may have been deleted, or you may not have permission to view it.
-          </EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
-          <Button render={<Link to="/" />} nativeButton={false} variant="outline">
-            <ArrowLeftIcon data-icon="inline-start" />
-            Back to notes
-          </Button>
-        </EmptyContent>
-      </Empty>
+    <main className="flex min-h-svh items-center">
+      <Container className="flex justify-center">
+        <Empty className="max-w-lg border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FileQuestionIcon />
+            </EmptyMedia>
+            <EmptyTitle>Note not found</EmptyTitle>
+            <EmptyDescription>
+              This note may have been deleted, or you may not have permission to view it.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button render={<Link to="/" />} nativeButton={false} variant="outline">
+              <ArrowLeftIcon data-icon="inline-start" />
+              Back to notes
+            </Button>
+          </EmptyContent>
+        </Empty>
+      </Container>
     </main>
   );
 }
