@@ -1,4 +1,3 @@
-import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 
 import { mutation, query } from "./_generated/server";
@@ -14,16 +13,16 @@ const noteValidator = v.object({
 });
 
 export const list = query({
-  args: { paginationOpts: paginationOptsValidator },
-  returns: paginationResultValidator(noteValidator),
-  handler: async (ctx, args) => {
+  args: {},
+  returns: v.array(noteValidator),
+  handler: async (ctx) => {
     const user = await authComponent.getAuthUser(ctx);
 
     return await ctx.db
       .query("notes")
       .withIndex("by_ownerId_and_updatedAt", (q) => q.eq("ownerId", user._id))
       .order("desc")
-      .paginate(args.paginationOpts);
+      .collect();
   },
 });
 

@@ -1,5 +1,4 @@
-import { createFileRoute, Navigate, Outlet, redirect } from "@tanstack/react-router";
-import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 /**
  * This is the _auth layout, which enables 'protected routes'
@@ -17,15 +16,5 @@ export const Route = createFileRoute("/_auth")({
 });
 
 function AuthenticatedLayout() {
-  return (
-    <>
-      <AuthLoading>{null}</AuthLoading>
-      <Authenticated>
-        <Outlet />
-      </Authenticated>
-      <Unauthenticated>
-        <Navigate to="/login" />
-      </Unauthenticated>
-    </>
-  );
+  return <Outlet />;
 }
