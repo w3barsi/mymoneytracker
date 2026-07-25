@@ -51,20 +51,27 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         content: "width=device-width, initial-scale=1",
       },
       {
-        // scaffold:title
-        title: "TanStarter",
+        title: "MoneyTracker",
       },
       {
         name: "description",
-        // scaffold:description
-        content: "A minimal starter template for 🏝️ TanStack Start.",
+        content: "A simple note-based money tracker with automatic totals.",
       },
     ],
     links: [
-      // Replace with your icons here, or remove if you have a favicon.ico in public/
       {
         rel: "icon",
-        href: "https://mugnavo.com/favicon.ico",
+        type: "image/svg+xml",
+        href: "/favicon.svg",
+      },
+      {
+        rel: "icon",
+        type: "image/x-icon",
+        href: "/favicon.ico",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/apple-touch-icon.png",
       },
       { rel: "stylesheet", href: appCss },
     ],

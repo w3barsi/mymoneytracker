@@ -1,6 +1,6 @@
 import { SiGoogle } from "@icons-pack/react-simple-icons";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { GalleryVerticalEndIcon } from "lucide-react";
+import { WalletCardsIcon } from "lucide-react";
 
 import { SignInSocialButton } from "#/components/sign-in-social-button";
 
@@ -14,13 +14,13 @@ function LoginForm() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-center gap-2 text-center">
-        <Link to="/" className="flex flex-col items-center gap-2 font-medium">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md">
-            <GalleryVerticalEndIcon className="size-6" />
+        <Link to="/landing" className="flex flex-col items-center gap-2 font-medium">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <WalletCardsIcon className="size-5" />
           </div>
-          <span className="sr-only">Acme Inc.</span>
+          <span className="sr-only">MoneyTracker</span>
         </Link>
-        <h1 className="text-xl font-bold">Welcome to Acme Inc.</h1>
+        <h1 className="text-xl font-bold">Welcome to MoneyTracker</h1>
         <p className="text-sm text-muted-foreground">Sign in or create an account with Google.</p>
       </div>
       <SignInSocialButton

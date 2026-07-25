@@ -43,7 +43,7 @@ function SiteBrand() {
       <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
         <WalletCardsIcon className="size-4" />
       </span>
-      Money Tracker
+      MoneyTracker
     </Link>
   );
 }

@@ -19,7 +19,7 @@ function LandingPage() {
             <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <WalletCardsIcon className="size-4" />
             </span>
-            Money Tracker
+            MoneyTracker
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
