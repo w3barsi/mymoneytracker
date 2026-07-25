@@ -1,11 +1,7 @@
+import { convexQuery } from "@convex-dev/react-query";
+import { queryOptions, useQueries } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import {
-  Authenticated,
-  AuthLoading,
-  Unauthenticated,
-  useMutation,
-  usePaginatedQuery,
-} from "convex/react";
+import { Authenticated, AuthLoading, Unauthenticated, useMutation } from "convex/react";
 import { ArrowRightIcon, FileTextIcon, Loader2Icon, PlusIcon, WalletCardsIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -27,6 +23,7 @@ import { Skeleton } from "#/components/ui/skeleton";
 import { api } from "../../convex/_generated/api";
 
 const NOTES_PER_PAGE = 12;
+const initialPageCursors: Array<string | null> = [null];
 const dateFormatter = new Intl.DateTimeFormat("en", {
   day: "numeric",
   month: "short",
@@ -34,7 +31,19 @@ const dateFormatter = new Intl.DateTimeFormat("en", {
   timeZone: "UTC",
 });
 
+const notesPageQueryOptions = (cursor: string | null) =>
+  queryOptions({
+    ...convexQuery(api.notes.list, {
+      paginationOpts: { cursor, numItems: NOTES_PER_PAGE },
+    }),
+  });
+
 export const Route = createFileRoute("/")({
+  loader: async ({ context }) => {
+    if (context.isAuthenticated) {
+      await context.queryClient.ensureQueryData(notesPageQueryOptions(null));
+    }
+  },
   component: HomePage,
 });
 
@@ -128,11 +137,27 @@ function LandingPage() {
 }
 
 function NotesDashboard() {
-  const { results, status, loadMore } = usePaginatedQuery(
-    api.notes.list,
-    {},
-    { initialNumItems: NOTES_PER_PAGE },
-  );
+  const [pageCursors, setPageCursors] = useState(initialPageCursors);
+  const pages = useQueries({
+    queries: pageCursors.map((cursor) => notesPageQueryOptions(cursor)),
+  });
+  const results = pages.flatMap((page) => page.data?.page ?? []);
+  const firstPage = pages[0];
+  const lastPage = pages.at(-1);
+  const isLoadingFirstPage = firstPage?.isPending ?? true;
+  const isLoadingMore = pageCursors.length > 1 && (lastPage?.isPending ?? false);
+  const canLoadMore = lastPage?.data ? !lastPage.data.isDone : false;
+
+  function loadMore() {
+    if (!lastPage?.data || lastPage.data.isDone) {
+      return;
+    }
+
+    const nextCursor = lastPage.data.continueCursor;
+    setPageCursors((current) =>
+      current.includes(nextCursor) ? current : [...current, nextCursor],
+    );
+  }
 
   return (
     <div className="min-h-svh bg-background">
@@ -155,9 +180,9 @@ function NotesDashboard() {
           <CreateNoteButton />
         </div>
 
-        {status === "LoadingFirstPage" ? <NotesLoading /> : null}
+        {isLoadingFirstPage ? <NotesLoading /> : null}
 
-        {status !== "LoadingFirstPage" && results.length === 0 ? (
+        {!isLoadingFirstPage && results.length === 0 ? (
           <Empty className="min-h-80 border">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -211,18 +236,18 @@ function NotesDashboard() {
           </ul>
         ) : null}
 
-        {status === "CanLoadMore" || status === "LoadingMore" ? (
+        {canLoadMore || isLoadingMore ? (
           <Button
             type="button"
             variant="outline"
             className="self-center"
-            disabled={status === "LoadingMore"}
-            onClick={() => loadMore(NOTES_PER_PAGE)}
+            disabled={isLoadingMore}
+            onClick={loadMore}
           >
-            {status === "LoadingMore" ? (
+            {isLoadingMore ? (
               <Loader2Icon data-icon="inline-start" className="animate-spin" />
             ) : null}
-            {status === "LoadingMore" ? "Loading" : "Load more"}
+            {isLoadingMore ? "Loading" : "Load more"}
           </Button>
         ) : null}
       </main>
