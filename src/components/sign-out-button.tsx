@@ -1,3 +1,5 @@
+import { LogOutIcon } from "lucide-react";
+
 import { Button } from "#/components/ui/button";
 import { authClient } from "#/lib/auth/auth-client";
 
@@ -14,10 +16,10 @@ export function SignOutButton() {
         });
       }}
       type="button"
-      className="w-fit"
-      variant="destructive"
-      size="lg"
+      variant="ghost"
+      size="sm"
     >
+      <LogOutIcon data-icon="inline-start" />
       Sign out
     </Button>
   );

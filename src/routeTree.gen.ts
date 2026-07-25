@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as GuestRouteRouteImport } from './routes/_guest/route'
+import { Route as AuthNoteIdRouteImport } from './routes/_auth/$noteId'
 import { Route as AuthAppRouteRouteImport } from './routes/_auth/app/route'
 import { Route as GuestLoginRouteImport } from './routes/_guest/login'
 import { Route as AuthAppIndexRouteImport } from './routes/_auth/app/index'
@@ -29,6 +30,11 @@ const AuthRouteRoute = AuthRouteRouteImport.update({
 const GuestRouteRoute = GuestRouteRouteImport.update({
   id: '/_guest',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthNoteIdRoute = AuthNoteIdRouteImport.update({
+  id: '/$noteId',
+  path: '/$noteId',
+  getParentRoute: () => AuthRouteRoute,
 } as any)
 const AuthAppRouteRoute = AuthAppRouteRouteImport.update({
   id: '/app',
@@ -54,12 +60,14 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AuthAppRouteRouteWithChildren
+  '/$noteId': typeof AuthNoteIdRoute
   '/login': typeof GuestLoginRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/': typeof AuthAppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$noteId': typeof AuthNoteIdRoute
   '/login': typeof GuestLoginRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app': typeof AuthAppIndexRoute
@@ -70,21 +78,23 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteRouteWithChildren
   '/_guest': typeof GuestRouteRouteWithChildren
   '/_auth/app': typeof AuthAppRouteRouteWithChildren
+  '/_auth/$noteId': typeof AuthNoteIdRoute
   '/_guest/login': typeof GuestLoginRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_auth/app/': typeof AuthAppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/login' | '/api/auth/$' | '/app/'
+  fullPaths: '/' | '/app' | '/$noteId' | '/login' | '/api/auth/$' | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/api/auth/$' | '/app'
+  to: '/' | '/$noteId' | '/login' | '/api/auth/$' | '/app'
   id:
     | '__root__'
     | '/'
     | '/_auth'
     | '/_guest'
     | '/_auth/app'
+    | '/_auth/$noteId'
     | '/_guest/login'
     | '/api/auth/$'
     | '/_auth/app/'
@@ -119,6 +129,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof GuestRouteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_auth/$noteId': {
+      id: '/_auth/$noteId'
+      path: '/$noteId'
+      fullPath: '/$noteId'
+      preLoaderRoute: typeof AuthNoteIdRouteImport
+      parentRoute: typeof AuthRouteRoute
     }
     '/_auth/app': {
       id: '/_auth/app'
@@ -165,10 +182,12 @@ const AuthAppRouteRouteWithChildren = AuthAppRouteRoute._addFileChildren(
 
 interface AuthRouteRouteChildren {
   AuthAppRouteRoute: typeof AuthAppRouteRouteWithChildren
+  AuthNoteIdRoute: typeof AuthNoteIdRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
   AuthAppRouteRoute: AuthAppRouteRouteWithChildren,
+  AuthNoteIdRoute: AuthNoteIdRoute,
 }
 
 const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
