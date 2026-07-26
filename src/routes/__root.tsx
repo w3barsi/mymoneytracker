@@ -20,7 +20,10 @@ interface MyRouterContext {
   convexQueryClient: ConvexQueryClient;
 }
 
-const $getAuthToken = createServerFn({ method: "GET" }).handler(async () => await getToken());
+const $getAuthToken = createServerFn({ method: "GET" }).handler(async () => {
+  const token = await getToken();
+  return token ?? null;
+});
 const authTokenQueryOptions = queryOptions({
   queryKey: ["auth", "token"],
   queryFn: () => $getAuthToken(),
@@ -57,6 +60,26 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         name: "description",
         content: "A simple note-based money tracker with automatic totals.",
       },
+      {
+        name: "theme-color",
+        content: "#18181b",
+      },
+      {
+        name: "mobile-web-app-capable",
+        content: "yes",
+      },
+      {
+        name: "apple-mobile-web-app-capable",
+        content: "yes",
+      },
+      {
+        name: "apple-mobile-web-app-status-bar-style",
+        content: "black-translucent",
+      },
+      {
+        name: "apple-mobile-web-app-title",
+        content: "MoneyTracker",
+      },
     ],
     links: [
       {
@@ -71,7 +94,12 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         rel: "apple-touch-icon",
+        sizes: "180x180",
         href: "/apple-touch-icon.png",
+      },
+      {
+        rel: "manifest",
+        href: "/manifest.webmanifest",
       },
       { rel: "stylesheet", href: appCss },
     ],

@@ -14,7 +14,7 @@ pnpm create mugnavo
 - [React 19](https://react.dev) + [React Compiler](https://react.dev/learn/react-compiler)
 - TanStack [Start](https://tanstack.com/start/latest) + [Router](https://tanstack.com/router/latest) + [Query](https://tanstack.com/query/latest)
 - [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/) + [Base UI](https://base-ui.com/) (base-rhea, [`--preset b1au68YWO`](https://ui.shadcn.com/create?preset=b1au68YWO&base=base&template=start&pointer=true))
-- [Vite 8](https://vite.dev) + [Nitro v3](https://nitro.build/)
+- [Vite 8](https://vite.dev) + [Cloudflare Workers](https://developers.cloudflare.com/workers/)
 - [Convex](https://convex.dev/) + [Better Auth](https://better-auth.com/)
 - [Vite Plus](https://viteplus.dev/) + [Oxlint](https://oxc.rs/docs/guide/usage/linter.html) + [Oxfmt](https://oxc.rs/docs/guide/usage/formatter.html)
 
@@ -59,17 +59,14 @@ pnpm create mugnavo
 
 ## Deploying to production
 
-[![Netlify Status](https://api.netlify.com/api/v1/badges/66acdee6-8e42-436f-9943-a67cad998f63/deploy-status)](https://app.netlify.com/projects/mugnavo-tanstarter/deploys)
-
-The [vite config](./vite.config.ts#L130-L131) is configured to use Nitro by default, which supports many [deployment presets](https://nitro.build/deploy) like Netlify, Vercel, Node.js, and more.
-
-Refer to the [TanStack Start hosting docs](https://tanstack.com/start/latest/docs/framework/react/guide/hosting) for more information.
+The app is configured for Cloudflare Workers at
+[money.darcygraphix.com](https://money.darcygraphix.com). Deploy it with
+`vpr deploy` after authenticating Wrangler with `wrangler login`.
 
 ## Issue watchlist
 
 - [Router/Start issues](https://github.com/TanStack/router/issues) - TanStack Start is in RC.
 - [Devtools releases](https://github.com/TanStack/devtools/releases) - TanStack Devtools is in alpha and may still have breaking changes.
-- [Nitro v3 beta](https://nitro.build/blog/v3-beta) - The template is configured with Nitro v3 beta by default.
 - [Convex releases](https://github.com/get-convex/convex-backend/releases)
 - [Better Auth releases](https://github.com/better-auth/better-auth/releases)
 - [Vite+ releases](https://github.com/voidzero-dev/vite-plus/releases) - Vite+ is in beta.

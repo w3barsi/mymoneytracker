@@ -1,9 +1,9 @@
+import { cloudflare } from "@cloudflare/vite-plugin";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact, { reactCompilerPreset } from "@vitejs/plugin-react";
-import { nitro } from "nitro/vite";
 import { defineConfig, lazyPlugins } from "vite-plus";
 
 import { version } from "./package.json";
@@ -127,9 +127,8 @@ export default defineConfig({
       // https://tanstack.com/devtools/latest/docs/vite-plugin#console-piping
       consolePiping: { enabled: false },
     }),
+    cloudflare({ viteEnvironment: { name: "ssr" } }),
     tanstackStart(),
-    // https://tanstack.com/start/latest/docs/framework/react/guide/hosting
-    nitro(),
     viteReact(),
     // https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#react-compiler
     babel({

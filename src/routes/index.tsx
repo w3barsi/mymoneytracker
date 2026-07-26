@@ -19,8 +19,14 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "#/components/ui/empty";
+import { calculateNoteTotalInCents } from "#/lib/note-total";
 
 import { api } from "../../convex/_generated/api";
+
+const totalFormatter = new Intl.NumberFormat("en", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 2,
+});
 
 const notesQueryOptions = queryOptions({
   ...convexQuery(api.notes.list, {}),
@@ -108,7 +114,9 @@ function NotesDashboard() {
                         <CardTitle className="truncate">
                           {note.title.trim() || "Untitled note"}
                         </CardTitle>
-                        <CardDescription>{getNotePreview(note.body)}</CardDescription>
+                        <CardDescription>
+                          {totalFormatter.format(calculateNoteTotalInCents(note.body) / 100)}
+                        </CardDescription>
                       </CardHeader>
                     </Card>
                   </Link>
@@ -148,14 +156,5 @@ function CreateNoteButton() {
       )}
       {isCreating ? "Creating" : "New note"}
     </Button>
-  );
-}
-
-function getNotePreview(body: string) {
-  return (
-    body
-      .split(/\r?\n/)
-      .find((line) => line.trim())
-      ?.trim() || "No entries yet"
   );
 }
