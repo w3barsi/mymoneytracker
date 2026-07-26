@@ -1,5 +1,5 @@
 import { convexQuery } from "@convex-dev/react-query";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { ArrowLeftIcon, FileQuestionIcon, Loader2Icon, Trash2Icon } from "lucide-react";
@@ -43,8 +43,19 @@ const totalFormatter = new Intl.NumberFormat("en", {
 });
 
 export const Route = createFileRoute("/_auth/$noteId")({
-  loader: async ({ context, params }) =>
-    await context.queryClient.prefetchQuery(convexQuery(api.notes.get, { noteId: params.noteId })),
+  loader: async ({ context, params }) => {
+    const noteQuery = convexQuery(api.notes.get, { noteId: params.noteId });
+    const notesQuery = queryOptions(convexQuery(api.notes.list, {}));
+    const notes = context.queryClient.getQueryData(notesQuery.queryKey);
+    const listedNote = notes?.find((note) => note._id === params.noteId);
+
+    if (listedNote) {
+      context.queryClient.setQueryData(noteQuery.queryKey, listedNote);
+      return;
+    }
+
+    await context.queryClient.prefetchQuery(noteQuery);
+  },
   pendingComponent: NoteLoading,
   component: NotePage,
 });
