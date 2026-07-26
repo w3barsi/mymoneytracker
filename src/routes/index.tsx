@@ -7,8 +7,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Container } from "#/components/container";
-import { SignOutButton } from "#/components/sign-out-button";
-import { ThemeToggle } from "#/components/theme-toggle";
 import { Button } from "#/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "#/components/ui/card";
 import {
@@ -19,6 +17,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "#/components/ui/empty";
+import { UserMenu } from "#/components/user-menu";
 import { calculateNoteTotalInCents } from "#/lib/note-total";
 
 import { api } from "../../convex/_generated/api";
@@ -62,10 +61,7 @@ function NotesDashboard() {
       <header className="border-b">
         <Container className="flex h-16 items-center justify-between">
           <SiteBrand />
-          <div className="flex items-center gap-1">
-            <ThemeToggle />
-            <SignOutButton />
-          </div>
+          <UserMenu />
         </Container>
       </header>
 
