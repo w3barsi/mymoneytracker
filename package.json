@@ -7,7 +7,7 @@
     "dev": "convex dev --start 'vp dev --port 3000 --host'",
     "build": "vp build",
     "preview": "vp preview",
-    "deploy": "vp build && wrangler deploy",
+    "deploy": "convex deploy --cmd 'vp build' && wrangler deploy",
     "cf-typegen": "wrangler types",
     "lint": "vp lint --type-aware --type-check",
     "lint:fix": "vp lint --type-aware --type-check --fix",
