@@ -32,6 +32,9 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     database: authComponent.adapter(ctx),
     socialProviders: getSocialProviders(),
     plugins: [convex({ authConfig })],
+    advanced: {
+      cookiePrefix: "money-tracker",
+    },
   });
 
 export const getCurrentUser = query({

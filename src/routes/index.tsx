@@ -1,12 +1,13 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { FileTextIcon, Loader2Icon, PlusIcon, WalletCardsIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Container } from "#/components/container";
+import { LandingPage } from "#/components/landing-page";
 import { Button } from "#/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "#/components/ui/card";
 import {
@@ -33,14 +34,19 @@ const notesQueryOptions = queryOptions({
 });
 
 export const Route = createFileRoute("/")({
-  beforeLoad: ({ context }) => {
-    if (!context.isAuthenticated) {
-      throw redirect({ to: "/login" });
+  loader: ({ context }) => {
+    if (context.isAuthenticated) {
+      return context.queryClient.ensureQueryData(notesQueryOptions);
     }
   },
-  loader: ({ context }) => context.queryClient.ensureQueryData(notesQueryOptions),
-  component: NotesDashboard,
+  component: HomePage,
 });
+
+function HomePage() {
+  const { isAuthenticated } = Route.useRouteContext();
+
+  return isAuthenticated ? <NotesDashboard /> : <LandingPage />;
+}
 
 function SiteBrand() {
   return (

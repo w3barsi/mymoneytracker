@@ -14,7 +14,7 @@ function LoginForm() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-center gap-2 text-center">
-        <Link to="/landing" className="flex flex-col items-center gap-2 font-medium">
+        <Link to="/" className="flex flex-col items-center gap-2 font-medium">
           <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <WalletCardsIcon className="size-5" />
           </div>
