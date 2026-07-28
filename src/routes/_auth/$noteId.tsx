@@ -1,35 +1,13 @@
 import { convexQuery } from "@convex-dev/react-query";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { ArrowLeftIcon, FileQuestionIcon, Loader2Icon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon } from "lucide-react";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import { toast } from "sonner";
 
 import { Container } from "#/components/container";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "#/components/ui/alert-dialog";
 import { Button } from "#/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "#/components/ui/card";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "#/components/ui/empty";
-import { Input } from "#/components/ui/input";
-import { Skeleton } from "#/components/ui/skeleton";
 import { Textarea } from "#/components/ui/textarea";
 import { calculateNoteTotalInCents } from "#/lib/note-total";
 
@@ -43,20 +21,8 @@ const totalFormatter = new Intl.NumberFormat("en", {
 });
 
 export const Route = createFileRoute("/_auth/$noteId")({
-  loader: async ({ context, params }) => {
-    const noteQuery = convexQuery(api.notes.get, { noteId: params.noteId });
-    const notesQuery = queryOptions(convexQuery(api.notes.list, {}));
-    const notes = context.queryClient.getQueryData(notesQuery.queryKey);
-    const listedNote = notes?.find((note) => note._id === params.noteId);
-
-    if (listedNote) {
-      context.queryClient.setQueryData(noteQuery.queryKey, listedNote);
-      return;
-    }
-
-    await context.queryClient.prefetchQuery(noteQuery);
-  },
-  pendingComponent: NoteLoading,
+  loader: ({ context, params }) =>
+    context.queryClient.prefetchQuery(convexQuery(api.notes.get, { noteId: params.noteId })),
   component: NotePage,
 });
 
@@ -65,7 +31,7 @@ function NotePage() {
   const { data: note } = useSuspenseQuery(convexQuery(api.notes.get, { noteId }));
 
   if (note === null) {
-    return <NoteNotFound />;
+    return null;
   }
 
   return <NoteEditor key={note._id} note={note} />;
@@ -74,27 +40,15 @@ function NotePage() {
 function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
   const navigate = useNavigate({ from: "/$noteId" });
   const updateNote = useMutation(api.notes.update);
-  const removeNote = useMutation(api.notes.remove).withOptimisticUpdate((localStore, args) => {
-    const notes = localStore.getQuery(api.notes.list, {});
-    if (notes !== undefined) {
-      localStore.setQuery(
-        api.notes.list,
-        {},
-        notes.filter((listedNote) => listedNote._id !== args.noteId),
-      );
-    }
-  });
-  const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [saveStatus, setSaveStatus] = useState("saved");
-  const [isDeleting, setIsDeleting] = useState(false);
-  const savedDraft = useRef({ title: note.title, body: note.body });
-  const currentDraft = useRef({ title: note.title, body: note.body });
+  const savedBody = useRef(note.body);
+  const currentBody = useRef(note.body);
   const latestSaveRequest = useRef(0);
   const totalInCents = calculateNoteTotalInCents(body);
 
-  async function persistDraft(nextTitle: string, nextBody: string) {
-    if (savedDraft.current.title === nextTitle && savedDraft.current.body === nextBody) {
+  async function persistDraft(nextBody: string) {
+    if (savedBody.current === nextBody) {
       return true;
     }
 
@@ -103,82 +57,36 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
     setSaveStatus("saving");
 
     try {
-      await updateNote({ noteId: note._id, title: nextTitle, body: nextBody });
+      await updateNote({ noteId: note._id, title: note.title, body: nextBody });
 
       if (requestId === latestSaveRequest.current) {
-        savedDraft.current = { title: nextTitle, body: nextBody };
-        const hasNewerDraft =
-          currentDraft.current.title !== nextTitle || currentDraft.current.body !== nextBody;
-        setSaveStatus(hasNewerDraft ? "pending" : "saved");
+        savedBody.current = nextBody;
+        setSaveStatus(currentBody.current === nextBody ? "saved" : "pending");
       }
 
       return true;
     } catch {
       if (requestId === latestSaveRequest.current) {
-        const hasNewerDraft =
-          currentDraft.current.title !== nextTitle || currentDraft.current.body !== nextBody;
-        setSaveStatus(hasNewerDraft ? "pending" : "error");
-
-        if (!hasNewerDraft) {
-          toast.error("Could not save this note. Your changes are still in the editor.");
-        }
+        setSaveStatus(currentBody.current === nextBody ? "error" : "pending");
       }
 
       return false;
     }
   }
 
-  const autosave = useEffectEvent((nextTitle: string, nextBody: string) => {
-    void persistDraft(nextTitle, nextBody);
-  });
-
-  useEffect(() => {
-    if (savedDraft.current.title === title && savedDraft.current.body === body) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => autosave(title, body), AUTOSAVE_DELAY_MS);
-    return () => window.clearTimeout(timeout);
-  }, [title, body]);
+  useDebounce(
+    body,
+    (nextBody) => {
+      void persistDraft(nextBody);
+    },
+    AUTOSAVE_DELAY_MS,
+  );
 
   async function handleBack() {
-    const didSave = await persistDraft(title, body);
+    const didSave = await persistDraft(body);
     if (didSave) {
       await navigate({ to: "/" });
     }
-  }
-
-  async function handleDelete() {
-    setIsDeleting(true);
-    const deletion = removeNote({ noteId: note._id });
-
-    const didNavigate = await navigate({ to: "/" }).then(
-      () => true,
-      () => false,
-    );
-
-    if (didNavigate) {
-      void deletion.catch(() => {
-        toast.error("Could not delete this note. It has been restored.");
-      });
-      return;
-    }
-
-    const didDelete = await deletion.then(
-      () => true,
-      () => false,
-    );
-
-    if (didDelete) {
-      toast.error("The note was deleted, but the notes list could not be opened.");
-    } else {
-      toast.error("Could not delete this note. Please try again.");
-    }
-    setIsDeleting(false);
-  }
-
-  function markDraftChanged() {
-    setSaveStatus("pending");
   }
 
   return (
@@ -190,7 +98,7 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
             variant="ghost"
             className="w-8 justify-self-start px-0 sm:w-auto sm:px-3"
             onClick={handleBack}
-            disabled={saveStatus === "saving" || isDeleting}
+            disabled={saveStatus === "saving"}
           >
             <ArrowLeftIcon data-icon="inline-start" />
             <span className="hidden sm:inline">Back</span>
@@ -198,64 +106,13 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
           </Button>
 
           <div className="flex min-w-0 flex-col items-center gap-0.5">
-            <Input
-              aria-label="Note title"
-              value={title}
-              placeholder="Untitled note"
-              maxLength={120}
-              className="h-8 max-w-md bg-transparent text-center font-semibold focus-visible:bg-input/50"
-              onChange={(event) => {
-                const nextTitle = event.target.value;
-                currentDraft.current = { title: nextTitle, body };
-                setTitle(nextTitle);
-                markDraftChanged();
-              }}
-            />
+            <h1 className="truncate font-semibold">{note.title.trim() || "Untitled note"}</h1>
             <p className="text-xs text-muted-foreground" aria-live="polite">
               {getSaveStatusLabel(saveStatus)}
             </p>
           </div>
 
-          <AlertDialog>
-            <AlertDialogTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="justify-self-end"
-                  disabled={isDeleting}
-                />
-              }
-            >
-              <Trash2Icon data-icon="inline-start" />
-              <span className="sr-only">Delete note</span>
-            </AlertDialogTrigger>
-            <AlertDialogContent size="sm">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete this note?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. The note and all of its entries will be permanently
-                  deleted.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel variant="ghost" disabled={isDeleting}>
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? (
-                    <Loader2Icon data-icon="inline-start" className="animate-spin" />
-                  ) : null}
-                  {isDeleting ? "Deleting" : "Delete"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <span />
         </Container>
       </header>
 
@@ -277,69 +134,14 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
             spellCheck
             className="min-h-[calc(100svh-15rem)] resize-none rounded-none bg-card p-5 font-mono text-base leading-8 md:text-base"
             onChange={(event) => {
-              const nextBody = event.target.value;
-              currentDraft.current = { title, body: nextBody };
-              setBody(nextBody);
-              markDraftChanged();
+              currentBody.current = event.target.value;
+              setBody(event.target.value);
+              setSaveStatus("pending");
             }}
           />
         </Container>
       </main>
     </div>
-  );
-}
-
-function NoteLoading() {
-  return (
-    <div className="min-h-svh bg-background">
-      <header className="border-b">
-        <Container className="grid h-16 grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2 sm:grid-cols-[6rem_minmax(0,1fr)_6rem]">
-          <Skeleton className="size-8" />
-          <div className="flex flex-col items-center gap-1">
-            <Skeleton className="h-8 w-full max-w-56" />
-            <Skeleton className="h-3 w-14" />
-          </div>
-          <Skeleton className="size-8 justify-self-end" />
-        </Container>
-      </header>
-      <main>
-        <Container className="flex flex-col gap-4 py-6 sm:py-8">
-          <Card size="sm">
-            <CardHeader>
-              <Skeleton className="h-4 w-12" />
-              <Skeleton className="h-9 w-40" />
-            </CardHeader>
-          </Card>
-          <Skeleton className="min-h-[calc(100svh-15rem)] w-full rounded-3xl" />
-        </Container>
-      </main>
-    </div>
-  );
-}
-
-function NoteNotFound() {
-  return (
-    <main className="flex min-h-svh items-center">
-      <Container className="flex justify-center">
-        <Empty className="max-w-lg border">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <FileQuestionIcon />
-            </EmptyMedia>
-            <EmptyTitle>Note not found</EmptyTitle>
-            <EmptyDescription>
-              This note may have been deleted, or you may not have permission to view it.
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button render={<Link to="/" />} nativeButton={false} variant="outline">
-              <ArrowLeftIcon data-icon="inline-start" />
-              Back to notes
-            </Button>
-          </EmptyContent>
-        </Empty>
-      </Container>
-    </main>
   );
 }
 
@@ -357,4 +159,13 @@ function getSaveStatusLabel(status: string) {
   }
 
   return "Saved";
+}
+
+function useDebounce<TValue>(value: TValue, callback: (value: TValue) => void, delay: number) {
+  const onDebounce = useEffectEvent(callback);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => onDebounce(value), delay);
+    return () => window.clearTimeout(timeout);
+  }, [value, delay]);
 }
