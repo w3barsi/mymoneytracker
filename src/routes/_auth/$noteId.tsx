@@ -82,6 +82,18 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
     AUTOSAVE_DELAY_MS,
   );
 
+  useEffect(() => {
+    if (note.body === savedBody.current) {
+      return;
+    }
+
+    latestSaveRequest.current += 1;
+    savedBody.current = note.body;
+    currentBody.current = note.body;
+    setBody(note.body);
+    setSaveStatus("saved");
+  }, [note.body]);
+
   async function handleBack() {
     const didSave = await persistDraft(body);
     if (didSave) {
