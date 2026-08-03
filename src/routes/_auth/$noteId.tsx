@@ -2,12 +2,29 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, EllipsisIcon, EraserIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 import { Container } from "#/components/container";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "#/components/ui/alert-dialog";
 import { Button } from "#/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "#/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "#/components/ui/dropdown-menu";
 import { Textarea } from "#/components/ui/textarea";
 import { calculateNoteTotalInCents } from "#/lib/note-total";
 
@@ -40,11 +57,16 @@ function NotePage() {
 function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
   const navigate = useNavigate({ from: "/$noteId" });
   const updateNote = useMutation(api.notes.update);
+  const removeNote = useMutation(api.notes.remove);
   const [body, setBody] = useState(note.body);
   const [saveStatus, setSaveStatus] = useState("saved");
+  const [pendingAction, setPendingAction] = useState<"clear" | "delete" | null>(null);
+  const [isActionPending, setIsActionPending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const savedBody = useRef(note.body);
   const currentBody = useRef(note.body);
   const latestSaveRequest = useRef(0);
+  const actionInProgress = useRef(false);
   const totalInCents = calculateNoteTotalInCents(body);
 
   async function persistDraft(nextBody: string) {
@@ -77,6 +99,10 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
   useDebounce(
     body,
     (nextBody) => {
+      if (actionInProgress.current) {
+        return;
+      }
+
       void persistDraft(nextBody);
     },
     AUTOSAVE_DELAY_MS,
@@ -98,6 +124,46 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
     const didSave = await persistDraft(body);
     if (didSave) {
       await navigate({ to: "/" });
+    }
+  }
+
+  async function handleClear() {
+    actionInProgress.current = true;
+    latestSaveRequest.current += 1;
+    setIsActionPending(true);
+    setActionError(null);
+    setSaveStatus("saving");
+
+    try {
+      await updateNote({ noteId: note._id, title: note.title, body: "" });
+      savedBody.current = "";
+      currentBody.current = "";
+      setBody("");
+      setSaveStatus("saved");
+      setPendingAction(null);
+    } catch {
+      setActionError("The note could not be cleared. Please try again.");
+      setSaveStatus("error");
+    } finally {
+      actionInProgress.current = false;
+      setIsActionPending(false);
+    }
+  }
+
+  async function handleDelete() {
+    actionInProgress.current = true;
+    latestSaveRequest.current += 1;
+    setIsActionPending(true);
+    setActionError(null);
+
+    try {
+      await removeNote({ noteId: note._id });
+      await navigate({ to: "/" });
+    } catch {
+      setActionError("The note could not be deleted. Please try again.");
+    } finally {
+      actionInProgress.current = false;
+      setIsActionPending(false);
     }
   }
 
@@ -124,9 +190,93 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
             </p>
           </div>
 
-          <span />
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button type="button" variant="ghost" size="icon" className="justify-self-end" />
+              }
+            >
+              <EllipsisIcon />
+              <span className="sr-only">Note actions</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setActionError(null);
+                    setPendingAction("clear");
+                  }}
+                >
+                  <EraserIcon />
+                  Clear
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => {
+                    setActionError(null);
+                    setPendingAction("delete");
+                  }}
+                >
+                  <Trash2Icon />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </Container>
       </header>
+
+      <AlertDialog
+        open={pendingAction === "clear"}
+        onOpenChange={(open) => !open && !isActionPending && setPendingAction(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear this note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove all entries from the note. This action cannot be undone.
+              {actionError && ` ${actionError}`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isActionPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isActionPending}
+              onClick={handleClear}
+            >
+              <EraserIcon data-icon="inline-start" />
+              {isActionPending ? "Clearing..." : "Clear"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={pendingAction === "delete"}
+        onOpenChange={(open) => !open && !isActionPending && setPendingAction(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the note. This action cannot be undone.
+              {actionError && ` ${actionError}`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isActionPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isActionPending}
+              onClick={handleDelete}
+            >
+              <Trash2Icon data-icon="inline-start" />
+              {isActionPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <main>
         <Container className="flex flex-col gap-4 py-4">
