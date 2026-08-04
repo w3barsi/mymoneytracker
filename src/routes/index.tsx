@@ -100,12 +100,12 @@ function NotesDashboard() {
 
           {notes.length > 0 ? (
             <ul className="grid gap-3 sm:grid-cols-2">
-              {notes.map((note) => (
+              {notes.map((note, index) => (
                 <li key={note._id}>
                   <Link
                     to="/$noteId"
                     params={{ noteId: note._id }}
-                    preload="intent"
+                    preload={index < 2 ? "render" : "intent"}
                     className="group block h-full outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
                   >
                     <Card
