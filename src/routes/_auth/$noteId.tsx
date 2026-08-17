@@ -25,6 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "#/components/ui/dropdown-menu";
+import { Input } from "#/components/ui/input";
 import { Textarea } from "#/components/ui/textarea";
 import { calculateNoteTotalInCents } from "#/lib/note-total";
 
@@ -58,19 +59,24 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
   const navigate = useNavigate({ from: "/$noteId" });
   const updateNote = useMutation(api.notes.update);
   const removeNote = useMutation(api.notes.remove);
+  const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [saveStatus, setSaveStatus] = useState("saved");
   const [pendingAction, setPendingAction] = useState<"clear" | "delete" | null>(null);
   const [isActionPending, setIsActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const titleInput = useRef<HTMLInputElement | null>(null);
+  const savedTitle = useRef(note.title);
   const savedBody = useRef(note.body);
+  const currentTitle = useRef(note.title);
   const currentBody = useRef(note.body);
   const latestSaveRequest = useRef(0);
   const actionInProgress = useRef(false);
   const totalInCents = calculateNoteTotalInCents(body);
 
-  async function persistDraft(nextBody: string) {
-    if (savedBody.current === nextBody) {
+  async function persistDraft(nextTitle: string, nextBody: string) {
+    if (savedTitle.current === nextTitle && savedBody.current === nextBody) {
       return true;
     }
 
@@ -79,17 +85,26 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
     setSaveStatus("saving");
 
     try {
-      await updateNote({ noteId: note._id, title: note.title, body: nextBody });
+      await updateNote({ noteId: note._id, title: nextTitle, body: nextBody });
 
       if (requestId === latestSaveRequest.current) {
+        savedTitle.current = nextTitle;
         savedBody.current = nextBody;
-        setSaveStatus(currentBody.current === nextBody ? "saved" : "pending");
+        setSaveStatus(
+          currentTitle.current === nextTitle && currentBody.current === nextBody
+            ? "saved"
+            : "pending",
+        );
       }
 
       return true;
     } catch {
       if (requestId === latestSaveRequest.current) {
-        setSaveStatus(currentBody.current === nextBody ? "error" : "pending");
+        setSaveStatus(
+          currentTitle.current === nextTitle && currentBody.current === nextBody
+            ? "error"
+            : "pending",
+        );
       }
 
       return false;
@@ -103,7 +118,7 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
         return;
       }
 
-      void persistDraft(nextBody);
+      void persistDraft(currentTitle.current, nextBody);
     },
     AUTOSAVE_DELAY_MS,
   );
@@ -120,11 +135,37 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
     setSaveStatus("saved");
   }, [note.body]);
 
+  useEffect(() => {
+    if (note.title === savedTitle.current) {
+      return;
+    }
+
+    latestSaveRequest.current += 1;
+    savedTitle.current = note.title;
+    currentTitle.current = note.title;
+    setTitle(note.title);
+    setSaveStatus("saved");
+  }, [note.title]);
+
+  useEffect(() => {
+    if (!isEditingTitle) {
+      return;
+    }
+
+    titleInput.current?.focus();
+    titleInput.current?.select();
+  }, [isEditingTitle]);
+
   async function handleBack() {
-    const didSave = await persistDraft(body);
+    const didSave = await persistDraft(title, body);
     if (didSave) {
       await navigate({ to: "/" });
     }
+  }
+
+  async function saveTitle() {
+    setIsEditingTitle(false);
+    await persistDraft(title, body);
   }
 
   async function handleClear() {
@@ -135,7 +176,7 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
     setSaveStatus("saving");
 
     try {
-      await updateNote({ noteId: note._id, title: note.title, body: "" });
+      await updateNote({ noteId: note._id, title, body: "" });
       savedBody.current = "";
       currentBody.current = "";
       setBody("");
@@ -184,7 +225,41 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
           </Button>
 
           <div className="flex min-w-0 flex-col items-center gap-0.5">
-            <h1 className="truncate font-semibold">{note.title.trim() || "Untitled note"}</h1>
+            {isEditingTitle ? (
+              <Input
+                ref={titleInput}
+                aria-label="Note title"
+                value={title}
+                placeholder="Untitled note"
+                className="h-7 max-w-full rounded-md bg-transparent text-center font-semibold"
+                onChange={(event) => {
+                  currentTitle.current = event.target.value;
+                  setTitle(event.target.value);
+                  setSaveStatus("pending");
+                }}
+                onBlur={() => void saveTitle()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.currentTarget.blur();
+                  }
+
+                  if (event.key === "Escape") {
+                    currentTitle.current = savedTitle.current;
+                    setTitle(savedTitle.current);
+                    setIsEditingTitle(false);
+                    setSaveStatus(currentBody.current === savedBody.current ? "saved" : "pending");
+                  }
+                }}
+              />
+            ) : (
+              <button
+                type="button"
+                className="max-w-full truncate rounded-sm px-1 font-semibold outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => setIsEditingTitle(true)}
+              >
+                {title.trim() || "Untitled note"}
+              </button>
+            )}
             <p className="text-xs text-muted-foreground" aria-live="polite">
               {getSaveStatusLabel(saveStatus)}
             </p>
