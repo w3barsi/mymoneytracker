@@ -240,7 +240,14 @@ function SwipeableNoteRow({
         onDragEnd={(_, info) => {
           const swipedLeft = info.velocity.x < -500;
           const swipedRight = info.velocity.x > 500;
-          onOpenChange(swipedLeft || (!swipedRight && x.get() < -SWIPE_REVEAL_DISTANCE / 2));
+          const shouldOpen = swipedLeft || (!swipedRight && x.get() < -SWIPE_REVEAL_DISTANCE / 2);
+
+          onOpenChange(shouldOpen);
+          void animate(x, shouldOpen ? -SWIPE_REVEAL_DISTANCE : 0, {
+            type: "spring",
+            stiffness: 500,
+            damping: 40,
+          });
         }}
       >
         <Link
