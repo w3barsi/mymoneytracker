@@ -31,6 +31,10 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     secret: env.BETTER_AUTH_SECRET,
     database: authComponent.adapter(ctx),
     socialProviders: getSocialProviders(),
+    session: {
+      expiresIn: 60 * 60 * 24 * 90,
+      updateAge: 60 * 60 * 24,
+    },
     plugins: [convex({ authConfig })],
     advanced: {
       cookiePrefix: "money-tracker",
