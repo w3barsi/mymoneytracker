@@ -367,7 +367,7 @@ function NoteEditor({ note }: { readonly note: Doc<"notes"> }) {
           <Textarea
             aria-label="Note entries"
             value={body}
-            placeholder={"1000 salary\n-500 dinner\n-250 coffee"}
+            placeholder={"1000 salary\n-500 dinner\n-250 coffee\n///\n-300 not counted"}
             spellCheck
             className="min-h-[calc(100svh-15rem)] resize-none rounded-none bg-card p-5 font-mono text-base leading-8 md:text-base"
             onChange={(event) => {

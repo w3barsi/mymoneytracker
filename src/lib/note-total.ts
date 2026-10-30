@@ -1,4 +1,5 @@
 const amountLinePattern = /^([+-]?)(\d+)(?:\.(\d{1,2}))?(?:\s.*)?$/;
+const ignoredSectionMarker = "///";
 
 export function parseNoteLineAmountInCents(line: string) {
   const match = amountLinePattern.exec(line);
@@ -17,7 +18,15 @@ export function parseNoteLineAmountInCents(line: string) {
 }
 
 export function calculateNoteTotalInCents(body: string) {
-  return body.split(/\r?\n/).reduce((total, line) => {
-    return total + (parseNoteLineAmountInCents(line) ?? 0);
-  }, 0);
+  let totalInCents = 0;
+
+  for (const line of body.split(/\r?\n/)) {
+    if (line.trimStart().startsWith(ignoredSectionMarker)) {
+      break;
+    }
+
+    totalInCents += parseNoteLineAmountInCents(line) ?? 0;
+  }
+
+  return totalInCents;
 }
